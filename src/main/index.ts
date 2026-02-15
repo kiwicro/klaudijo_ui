@@ -107,11 +107,12 @@ function createWindow(): void {
 }
 
 function createTray(): void {
-  // Create a simple 16x16 tray icon
-  const icon = nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAPklEQVQ4T2NkYPj/n4EBCRgZGRmRuUC+kZGRiQGPBkYGBgZGfBpgakkzAJdriDcA3VXEuoZoXiA6DFBcAQCNjBARAWjVfAAAAABJRU5ErkJggg=='
-  )
-  tray = new Tray(icon)
+  // In dev: resources/ is at project root. In production: it's in app.getAppPath()/resources/ or process.resourcesPath
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, 'tray-icon.png')
+    : join(__dirname, '../../resources/tray-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
+  tray = new Tray(icon.resize({ width: 16, height: 16 }))
   tray.setToolTip('Klaudijo UI')
 
   const contextMenu = Menu.buildFromTemplate([

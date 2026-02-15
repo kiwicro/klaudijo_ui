@@ -23,6 +23,10 @@
     ],
     "extraResources": [
       {
+        "from": "resources/tray-icon.png",
+        "to": "tray-icon.png"
+      },
+      {
         "from": "node_modules/node-pty/build/Release",
         "to": "node-pty",
         "filter": [
