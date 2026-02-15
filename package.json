@@ -1,0 +1,92 @@
+{
+  "name": "klaudijo-ui",
+  "version": "1.0.0",
+  "description": "Desktop app to manage multiple Claude Code CLI sessions",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "electron-vite build && electron-builder --win --dir",
+    "dist:installer": "electron-vite build && electron-builder --win",
+    "postinstall": "node scripts/patch-node-pty.js && electron-rebuild -f -w node-pty",
+    "rebuild": "node scripts/patch-node-pty.js && electron-rebuild -f -w node-pty"
+  },
+  "build": {
+    "appId": "com.klaudijo.ui",
+    "productName": "Klaudijo UI",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/node-pty/build/Release",
+        "to": "node-pty",
+        "filter": [
+          "*.node",
+          "*.dll",
+          "*.exe"
+        ]
+      },
+      {
+        "from": "node_modules/node-pty/build/Release",
+        "to": "../build/Release",
+        "filter": [
+          "*.node",
+          "*.dll",
+          "*.exe"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": null,
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ]
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
+    "electron-store": "^8.2.0",
+    "node-pty": "^1.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "uuid": "^11.0.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.7.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^26.7.0",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.0",
+    "vite": "^5.4.0"
+  }
+}
