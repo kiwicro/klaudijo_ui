@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, Notification, Tray, Menu, nativeImage, session } from 'electron'
 import { join } from 'path'
 import { registerIpcHandlers } from './ipc-handlers'
 import { ptyManager } from './pty-manager'
@@ -33,13 +33,29 @@ function createWindow(): void {
     title: 'Klaudijo UI',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      navigateOnDragDrop: false
     }
   })
 
   if (saved.maximized) win.maximize()
 
   mainWindow = win
+
+  // Security: restrict navigation to app URLs only
+  win.webContents.on('will-navigate', (event, url) => {
+    const devUrl = process.env.ELECTRON_RENDERER_URL || ''
+    if (!url.startsWith('file://') && (!devUrl || !url.startsWith(devUrl))) {
+      event.preventDefault()
+    }
+  })
+
+  // Security: deny all new window creation
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
   // Save bounds on resize/move (debounced)
   let boundsTimer: ReturnType<typeof setTimeout> | null = null
@@ -124,6 +140,21 @@ function createTray(): void {
 }
 
 app.whenReady().then(() => {
+  // Security: Content Security Policy
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const devUrl = process.env.ELECTRON_RENDERER_URL
+    const connectSrc = devUrl ? `'self' ${devUrl} ws://localhost:*` : "'self'"
+    const scriptSrc = devUrl ? `'self' 'unsafe-inline'` : "'self'"
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [
+          `default-src 'self'; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src ${connectSrc}`
+        ]
+      }
+    })
+  })
+
   createWindow()
   createTray()
 })

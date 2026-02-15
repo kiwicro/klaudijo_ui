@@ -27,7 +27,18 @@ export function listDirectory(dirPath: string): DirEntry[] {
   }
 }
 
+// Block executable extensions from being opened via shell.openPath
+const BLOCKED_EXTENSIONS = new Set([
+  '.exe', '.bat', '.cmd', '.ps1', '.com', '.msi', '.scr', '.pif',
+  '.vbs', '.vbe', '.js', '.jse', '.wsf', '.wsh', '.msc', '.cpl',
+  '.reg', '.inf', '.hta', '.lnk', '.dll'
+])
+
 export function openInEditor(filePath: string): void {
+  const ext = path.extname(filePath).toLowerCase()
+  if (BLOCKED_EXTENSIONS.has(ext)) {
+    throw new Error(`Refusing to open potentially executable file: ${ext}`)
+  }
   shell.openPath(filePath)
 }
 
@@ -95,14 +106,12 @@ export function detectProjects(parentDir: string): { name: string; path: string 
 }
 
 export function discoverClaudeMdFiles(projectPath: string): { absolutePath: string; relativePath: string; name: string }[] {
-  console.log('[file-service] discoverClaudeMdFiles called with:', projectPath)
   const results: { absolutePath: string; relativePath: string; name: string }[] = []
 
   const addIfExists = (relPath: string) => {
     const abs = path.join(projectPath, relPath)
     try {
       if (fs.statSync(abs).isFile()) {
-        console.log('[file-service] Found:', abs)
         results.push({
           absolutePath: abs,
           relativePath: relPath,
@@ -119,10 +128,8 @@ export function discoverClaudeMdFiles(projectPath: string): { absolutePath: stri
 
   // .claude directory md files
   const claudeDir = path.join(projectPath, '.claude')
-  console.log('[file-service] Checking .claude dir:', claudeDir)
   try {
     if (fs.statSync(claudeDir).isDirectory()) {
-      console.log('[file-service] .claude dir exists, scanning...')
       const scanDir = (dir: string, relBase: string) => {
         const entries = fs.readdirSync(dir, { withFileTypes: true })
         for (const entry of entries) {
@@ -130,7 +137,6 @@ export function discoverClaudeMdFiles(projectPath: string): { absolutePath: stri
           if (entry.isDirectory()) {
             scanDir(path.join(dir, entry.name), rel)
           } else if (entry.name.toLowerCase().endsWith('.md')) {
-            console.log('[file-service] Found .claude MD:', entry.name)
             results.push({
               absolutePath: path.join(dir, entry.name),
               relativePath: `.claude/${rel}`,
@@ -141,10 +147,9 @@ export function discoverClaudeMdFiles(projectPath: string): { absolutePath: stri
       }
       scanDir(claudeDir, '')
     }
-  } catch (err) {
-    console.log('[file-service] .claude dir error:', err)
+  } catch {
+    // .claude dir doesn't exist or can't read
   }
 
-  console.log('[file-service] Total discovered:', results.length)
   return results
 }
