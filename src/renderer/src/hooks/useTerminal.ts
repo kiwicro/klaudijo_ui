@@ -80,6 +80,17 @@ export function useTerminal({ projectId, containerRef }: UseTerminalOptions) {
       window.api.ptyInput(projectId, data)
     })
 
+    // Handle Ctrl+V paste (Electron doesn't wire this up automatically)
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.type === 'keydown' && e.ctrlKey && e.key === 'v') {
+        navigator.clipboard.readText().then((text) => {
+          if (text) window.api.ptyInput(projectId, text)
+        })
+        return false
+      }
+      return true
+    })
+
     const removePtyData = window.api.onPtyData((id, data) => {
       if (id === projectId) {
         term.write(data)

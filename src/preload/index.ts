@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC } from '../shared/ipc-channels'
 import { PinnedFile, McpServer } from '../shared/types'
 
@@ -78,7 +78,10 @@ const api = {
 
   // MCP
   getMcpServers: (projectPath: string): Promise<McpServer[]> =>
-    ipcRenderer.invoke(IPC.MCP_LIST, projectPath)
+    ipcRenderer.invoke(IPC.MCP_LIST, projectPath),
+
+  // Utils
+  getFilePath: (file: File): string => webUtils.getPathForFile(file)
 }
 
 export type ElectronAPI = typeof api

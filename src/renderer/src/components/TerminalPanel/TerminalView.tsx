@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
+import React, { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react'
 import { useTerminal } from '../../hooks/useTerminal'
 
 interface Props {
@@ -11,8 +11,13 @@ export interface TerminalViewHandle {
   clearSearch: () => void
 }
 
+function quotePath(p: string): string {
+  return p.includes(' ') ? `"${p}"` : p
+}
+
 export const TerminalView = forwardRef<TerminalViewHandle, Props>(({ projectId }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const { fit, searchNext, searchPrev, clearSearch } = useTerminal({ projectId, containerRef })
   const [dragOver, setDragOver] = useState(false)
 
@@ -29,21 +34,47 @@ export const TerminalView = forwardRef<TerminalViewHandle, Props>(({ projectId }
     return () => observer.disconnect()
   }, [fit, projectId])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-    setDragOver(true)
-  }, [])
+  // Global document-level drag/drop listeners — xterm can't intercept these
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) return
 
-  const handleDragLeave = useCallback(() => {
-    setDragOver(false)
-  }, [])
+    const isOverTerminal = (e: DragEvent) => {
+      const rect = wrapper.getBoundingClientRect()
+      return (
+        e.clientX >= rect.left &&
+        e.clientX <= rect.right &&
+        e.clientY >= rect.top &&
+        e.clientY <= rect.bottom
+      )
+    }
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
+    const onDragOver = (e: DragEvent) => {
+      if (!isOverTerminal(e)) {
+        setDragOver(false)
+        return
+      }
       e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+      setDragOver(true)
+    }
+
+    const onDragLeave = (e: DragEvent) => {
+      // Left the window entirely
+      if (!e.relatedTarget) {
+        setDragOver(false)
+      }
+    }
+
+    const onDrop = (e: DragEvent) => {
+      if (!isOverTerminal(e)) {
+        setDragOver(false)
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
       setDragOver(false)
-      if (!projectId) return
+      if (!projectId || !e.dataTransfer) return
 
       const klaudijoFile = e.dataTransfer.getData('application/klaudijo-file')
       if (klaudijoFile) {
@@ -52,8 +83,13 @@ export const TerminalView = forwardRef<TerminalViewHandle, Props>(({ projectId }
       }
 
       if (e.dataTransfer.files.length > 0) {
-        const paths = Array.from(e.dataTransfer.files).map((f) => f.path)
-        window.api.ptyInput(projectId, paths.join(' '))
+        const paths = Array.from(e.dataTransfer.files)
+          .map((f) => window.api.getFilePath(f))
+          .filter(Boolean)
+          .map(quotePath)
+        if (paths.length > 0) {
+          window.api.ptyInput(projectId, paths.join(' '))
+        }
         return
       }
 
@@ -61,17 +97,24 @@ export const TerminalView = forwardRef<TerminalViewHandle, Props>(({ projectId }
       if (text) {
         window.api.ptyInput(projectId, text)
       }
-    },
-    [projectId]
-  )
+    }
+
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop', onDrop)
+    return () => {
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop', onDrop)
+    }
+  }, [projectId])
 
   return (
     <div
+      ref={wrapperRef}
       className={`terminal-view ${dragOver ? 'terminal-view--dragover' : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
     >
+      {dragOver && <div className="terminal-drop-overlay" />}
       <div
         className="terminal-container"
         ref={containerRef}
