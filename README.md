@@ -10,6 +10,9 @@ Built with Electron, React, and xterm.js.
 
 Klaudijo UI lets you run several Claude Code terminals side by side from a single window. Add your projects, and each one gets its own persistent PTY session with a 1MB rolling buffer — switch between them without losing context.
 
+<img width="1371" height="884" alt="image" src="https://github.com/user-attachments/assets/9f29e0a5-ae73-45bd-999c-91a384ac73e6" />
+
+
 **Key features:**
 
 - **Multi-project management** — Add projects from the sidebar, each with its own Claude Code session
